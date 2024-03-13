@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-b-configmap
+data:
+  app.py: |
+    from flask import Flask
+    import requests
+    from datetime import datetime
+
+    app = Flask(__name__)
+
+    last_minute_avg = None
+    btc_data = []
+    last_price = 0
+
+    def fetch_btc_price():
+        url = "https://api.coindesk.com/v1/bpi/currentprice/BTC.json"
+        response = requests.get(url)
+        data = response.json()
+        price = data["bpi"]["USD"]["rate_float"]
+        btc_data.append(price)
+        return price
+
+    @app.route('/')
+    def serviceb():
+        btc_price = fetch_btc_price()
+        current_time = datetime.utcnow().strftime('%y-%m-%d %H:%M:%S UTC')
+        return f"Service B, bitcoin value is {btc_price}$ for '{current_time}'"
+
+    if __name__ == '__main__':
+      app.run(debug=True, host='0.0.0.0')

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-a-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-a
+  template:
+    metadata:
+      labels:
+        app: app-a
+    spec:
+      tolerations:
+      - key: "kubernetes.azure.com/scalesetpriority"
+        operator: "Equal"
+        value: "spot"
+        effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: "kubernetes.azure.com/scalesetpriority"
+                operator: In
+                values:
+                - "spot"
+      containers:
+        - name: app-b
+          image: python:alpine
+          command:
+            [
+              "sh",
+              "-c",
+              "pip install Flask && pip install requests && python -u /app/app.py",
+            ]
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: app-a-volume
+              mountPath: /app
+      volumes:
+        - name: app-a-volume
+          configMap:
+            name: app-a-configmap

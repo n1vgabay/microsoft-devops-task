@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-b-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-b
+  template:
+    metadata:
+      labels:
+        app: app-b
+    spec:
+      containers:
+      - name: app-b
+        image: python:alpine
+        command:
+          ["sh", "-c", "pip install Flask && pip install requests && python -u /app/app.py"]
+        ports:
+        - containerPort: 5000 
+        volumeMounts:
+          - name: app-b-volume
+            mountPath: /app
+      volumes:
+          - name: app-b-volume
+            configMap:
+              name: app-b-configmap

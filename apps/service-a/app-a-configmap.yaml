@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-a-configmap
+data:
+  app.py: |
+    from flask import Flask
+    import requests
+    from datetime import datetime, timezone
+    import time
+    import threading
+
+    app = Flask(__name__)
+
+    btc_data = []
+
+    def fetch_btc_price():
+        url = "https://api.coindesk.com/v1/bpi/currentprice/BTC.json"
+        response = requests.get(url)
+        data = response.json()
+        price = data["bpi"]["USD"]["rate_float"]
+        return price
+
+    def calculate_average_last_10_minutes():
+        if len(btc_data) >= 10:
+            last_10_minutes = btc_data[-10:]
+            average_price = sum(last_10_minutes) / len(last_10_minutes)
+            return average_price
+        else:
+            return None
+
+    def print_btc_info():
+        while True:
+            btc_price = fetch_btc_price()
+            btc_data.append(btc_price)
+            current_time = datetime.now(timezone.utc).strftime('%y-%m-%d %H:%M:%S UTC')
+            print(f"Bitcoin value: {btc_price}$ for '{current_time}'")
+
+            # Check if 10 new records have been added
+            if len(btc_data) % 10 == 0:
+                average_price = calculate_average_last_10_minutes()
+                if average_price is not None:
+                    print(f"Average value of last 10 minutes: {average_price}$")
+                # Reset btc_data array
+                btc_data.clear()
+
+            time.sleep(60)  # Sleep for 60 seconds (1 minute)
+
+    @app.route('/')
+    def index():
+        btc_price = fetch_btc_price()
+        current_time = datetime.now(timezone.utc).strftime('%y-%m-%d %H:%M:%S UTC')
+        return f"Service A<br>Bitcoin value: {btc_price}$ for '{current_time}'"
+
+    if __name__ == '__main__':
+        # Run the print_btc_info function in a separate thread to continuously retrieve and print BTC info
+        thread = threading.Thread(target=print_btc_info)
+        thread.start()
+
+        # Run the Flask app
+        app.run(debug=True, host='0.0.0.0')
