@@ -13,7 +13,7 @@ while true; do
 
     if [ -n "$ADDRESS" ]; then
         echo "URL for service A: http://$ADDRESS/servicea"
-        echo "URL for service A: http://$ADDRESS/serviceb"
+        echo "URL for service B: http://$ADDRESS/serviceb"
         exit 0
     else
         echo "Waiting for ingress nginx load balancer IP..."
