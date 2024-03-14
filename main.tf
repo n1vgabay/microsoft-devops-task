@@ -2,9 +2,20 @@ locals {
   env                 = "prod"
   region              = "eastus2"
   resource_group_name = "rg-devops-task"
-  eks_name            = "devops-task"
-  eks_version         = "1.27"
+  aks_name            = "devops-task"
+  aks_version         = "1.27"
 }
+
+resource "null_resource" "deploy_script" {
+  provisioner "local-exec" {
+    command = "./deploy.sh"
+  }
+
+  depends_on = [ 
+    azurerm_kubernetes_cluster.this, 
+    azurerm_kubernetes_cluster_node_pool.spot 
+  ]
+} 
 
 ##### RESOURCE GROUP #####
 resource "azurerm_resource_group" "this" {
@@ -14,7 +25,7 @@ resource "azurerm_resource_group" "this" {
 
 ##### VPC #####
 resource "azurerm_virtual_network" "this" {
-  name                = "vpc-devops-task"
+  name                = "vpc-${local.aks_name}"
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
@@ -25,15 +36,15 @@ resource "azurerm_virtual_network" "this" {
 }
 
 ##### SUBNETS #####
-resource "azurerm_subnet" "subnet1" {
-  name                 = "subnet1"
+resource "azurerm_subnet" "subnet_aks_devops_task_1" {
+  name                 = "subnet-${local.aks_name}-1"
   address_prefixes     = ["10.0.0.0/19"]
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
 }
 
-resource "azurerm_subnet" "subnet2" {
-  name                 = "subnet2"
+resource "azurerm_subnet" "subnet_aks_devops_task_2" {
+  name                 = "subnet-${local.aks_name}-2"
   address_prefixes     = ["10.0.32.0/19"]
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
@@ -53,15 +64,15 @@ resource "azurerm_role_assignment" "base" {
 }
 
 resource "azurerm_kubernetes_cluster" "this" {
-  name                = "${local.env}-${local.eks_name}"
+  name                = "${local.env}-${local.aks_name}"
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
-  dns_prefix          = "aks-devops-task"
+  dns_prefix          = "aks-${local.aks_name}"
 
-  kubernetes_version        = local.eks_version
+  kubernetes_version        = local.aks_version
   automatic_channel_upgrade = "stable"
   private_cluster_enabled   = false
-  node_resource_group       = "${local.resource_group_name}-${local.env}-${local.eks_name}"
+  node_resource_group       = "${local.resource_group_name}-${local.env}-${local.aks_name}"
 
   sku_tier = "Free" # Set "Standard" for production
 
@@ -77,8 +88,8 @@ resource "azurerm_kubernetes_cluster" "this" {
   default_node_pool {
     name                 = "general"
     vm_size              = "Standard_D2_v2"
-    vnet_subnet_id       = azurerm_subnet.subnet1.id
-    orchestrator_version = local.eks_version
+    vnet_subnet_id       = azurerm_subnet.subnet_aks_devops_task_1.id
+    orchestrator_version = local.aks_version
     type                 = "VirtualMachineScaleSets"
     enable_auto_scaling  = true
     node_count           = 1
@@ -113,8 +124,8 @@ resource "azurerm_kubernetes_cluster_node_pool" "spot" {
   name                  = "spot"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.this.id
   vm_size               = "Standard_DS2_v2"
-  vnet_subnet_id        = azurerm_subnet.subnet1.id
-  orchestrator_version  = local.eks_version
+  vnet_subnet_id        = azurerm_subnet.subnet_aks_devops_task_1.id
+  orchestrator_version  = local.aks_version
   priority              = "Spot"
   spot_max_price        = -1
   eviction_policy       = "Delete"
@@ -154,7 +165,7 @@ resource "azurerm_federated_identity_credential" "az_workload_identity_creds" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = azurerm_kubernetes_cluster.this.oidc_issuer_url
   parent_id           = azurerm_user_assigned_identity.az_workload_identity_user.id
-  subject             = "system:serviceaccount:default:azure-sa"
+  subject             = "system:serviceaccount:prod:azure-sa"
 
   depends_on = [azurerm_kubernetes_cluster.this]
 }

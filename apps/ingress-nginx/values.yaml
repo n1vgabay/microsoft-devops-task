@@ -1,7 +1,6 @@
----
 controller:
   ingressClassResource:
-    name: external-nginx
+    name: nginx
   service:
     externalTrafficPolicy: Local
     annotations:
@@ -9,4 +8,4 @@ controller:
       azure-load-balancer-internal: "true"
   watchIngressWithoutClass: true
   extraArgs:
-    ingress-class: external-nginx
+    ingress-class: nginx
