@@ -14,8 +14,6 @@ Extra features for Service A:
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Features](#features)
-- [Contributing](#contributing)
 
 ## Prerequisites
 
